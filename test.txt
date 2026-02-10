@@ -1,0 +1,34 @@
+#! shebang
+hello     word
+break
+do
+continue
+[130]
+/// hello
+buttwhole
+
+///
+"string"
+"""multi-line
+how
+multi
+does
+it
+get
+string"""
+test_variable
+main
+in
+hello
+(int)
+{   }
+int main(){
+#! shebang
+}
+for (i in x..y){
+    println("Hello")
+}
+0XF
+14512
+12.12314
+12abc
