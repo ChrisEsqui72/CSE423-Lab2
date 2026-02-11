@@ -1,5 +1,4 @@
-/* -*-bison-*- */
-/* Simple wc implementation in Flex */
+ /* Lexical analyzer file for k0 sublanguage of Kotlin */
 %option noyywrap
 %option noinput
 %option nounput
@@ -11,16 +10,17 @@
 	extern FILE *yyin;
 	int rows = 1, words = 0, chars = 0, start_row = 0;
         char *strbuf = NULL;
+        char *final_sval = NULL;
         int str_len;
         int str_cap;
 %}
 
 whitespace [ \t\r]+
 basic_types "byte"|"short"|"int"|"long"|"float"|"double"|"string"
+shebang (#\!).*
 %x COMMENT
 %x STRING
 %x MSTRING
-shebang (#\!).*
 
 %%
 
@@ -120,21 +120,30 @@ shebang (#\!).*
         return CHAR_LITERAL;
 }
 
- /* STING state to handle stripping/consuming of string and putting into sval */
+ /* MSTRING state to handle stripping/consuming of string and putting into sval */
+\"\"\"                  { BEGIN(MSTRING); start_row = rows; str_len = 0; str_cap = 64; strbuf = malloc(str_cap); if (strbuf==NULL){ fprintf(stderr, "malloc failed\n"); exit(1); } strbuf[0] = '\0'; }
+<MSTRING>\"\"\"         { BEGIN(INITIAL); final_sval = strbuf; strbuf = NULL; str_len = 0; str_cap = 64; return STRING_LITERAL; }
+<MSTRING>\\n            { append_string("\n", 1); }
+<MSTRING>\\t            { append_string("\t", 1); }
+<MSTRING>\\r            { append_string("\r", 1); }
+<MSTRING>\\\"           { append_string("\"", 1); }
+<MSTRING>\\\\           { append_string("\\", 1); }
+<MSTRING>[^\\\"]+       { append_string(yytext, yyleng); }
+<MSTRING>\\(.)          { fprintf(stderr, "Lexical error: MLL invalid escape sequence \\%c at row %d\n", yytext[1], rows); exit(1); }
+<MSTRING><<EOF>>        { fprintf(stderr, "Lexical error: MLL EOF unterminated string starting at row %d\n", start_row); exit(1); }
+
+ /* STRING state to handle stripping/consuming of string and putting into sval */
 \"              { BEGIN(STRING); start_row = rows; str_len = 0; str_cap = 64; strbuf = malloc(str_cap); if (strbuf==NULL){ fprintf(stderr, "malloc failed\n"); exit(1); } strbuf[0] = '\0'; }
-<STRING>\"      { BEGIN(INITIAL); yylval.sval = strbuf; strbuf = NULL; str_len = 0; str_cap = 64; return STRING_LITERAL; }
- /* append correct escaped characters * /
+<STRING>\"      { BEGIN(INITIAL); final_sval = strbuf; strbuf = NULL; str_len = 0; str_cap = 64; return STRING_LITERAL; }
 <STRING>\\n     { append_string("\n", 1); }
 <STRING>\\t     { append_string("\t", 1); }
 <STRING>\\r     { append_string("\r", 1); }
 <STRING>\\\"    { append_string("\"", 1); }
 <STRING>\\\\    { append_string("\\", 1); }
 <STRING>[^\\\"\n]+ { append_string(yytext, yyleng); }
- /* deal with errors */
-<STRING>\\(.)   { fprintf(stderr, "Lexical error: invalid escape sequence \\%c at row %d\n", yytext[1], rows); exit(1); }
-<STRING>\n      { fprintf(stderr, "Lexical error: unterminated string starting at row %d\n", start_row); exit(1); }
-<STRING><<EOF>> { fprintf(stderr, "Lexical error: unterminated string starting at row %d\n", start_row); exit(1); }
-
+<STRING>\\(.)   { fprintf(stderr, "Lexical error: SLL invalid escape sequence \\%c at row %d\n", yytext[1], rows); exit(1); }
+<STRING>\n      { fprintf(stderr, "Lexical error: SLL unterminated string starting at row %d\n", start_row); exit(1); }
+<STRING><<EOF>> { fprintf(stderr, "Lexical error: EOF unterminated string starting at row %d\n", start_row); exit(1); }
 
  /* identifiers */
 [a-zA-Z_][a-zA-Z0-9_]*  { words++; chars += strlen(yytext); return IDENTIFIER; } /* catch for identifiers (var names, fun names, etc. ) */
@@ -173,10 +182,10 @@ void append_string(const char *text, int length){
                         fprintf(stderr, "Error: realloc failed while building string literal\n");
                         exit(1);
                 }
-                str_cap = new_cap
+                str_cap = new_cap;
         }
 
-        memcpy(strbuf + str_len, text, length) /* copy text into the end of the buffer */
+        memcpy(strbuf + str_len, text, length); /* copy text into the end of the buffer */
         str_len += length; /* update length */
         strbuf[str_len] = '\0'; /* keep it null terminated */
 }

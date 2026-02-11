@@ -4,18 +4,9 @@ break
 do
 continue
 [130]
-/// hello
-buttwhole
-
-///
+"hello"
+5/9
 "string"
-"""multi-line
-how
-multi
-does
-it
-get
-string"""
 test_variable
 main
 in
@@ -32,3 +23,10 @@ for (i in x..y){
 14512
 12.12314
 12abc
+"demonic long as fuck \n string to ruin\n my life\n and test the fuck outta this\n\t "
+
+"""multi-line
+super mega
+awesome
+duper super cool
+string"""
