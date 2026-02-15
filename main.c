@@ -8,11 +8,9 @@
 extern FILE *yyin;
 extern char *yytext;
 extern char *final_sval;
+extern char *final_raw;
 int yylex(void);
 extern int rows, words, chars;
-const char *forbidden_words[] = {"as", "as?", "class", "!in", "is", "!is", "object", "package", "super", "this", "throw", "try", "typealias", "typeof", "by", "catch", "constructor", "delegate", "dynamic", "field", "file", "finally", "get",
-                                 "init", "param", "property", "reciever", "set", "setparam", "value", "where", "abstract", "actual", "annotation", "companion", "crossinline", "data", "enum", "except", "external", "final", "infix", "inline", "inner", "internal",
-                                 "lateinit", "noinline", "open", "operator", "out", "private", "protected", "public", "reified", "sealed", "suspend", "tailrec", "vararg"};
 
 /* token list */
 struct token
@@ -67,11 +65,11 @@ void free_tokens(struct tokenList *head)
 
 void print_tokens(struct tokenList *head)
 {
+    printf("|-----------------------------------------------------------------------------------------------------------------------------------------------------|\n");
     while (head)
     {
         struct token *t = head->t;
-        printf("|--------------------------------------------------------------------------------------------------------------------------------|\n");
-        printf(" %d Return Code, %s Actual Text, %d Line Number, %s Filename, %d Integer Value, %lf Double Value, %s String\n", t->category, t->text, t->lineno, t->filename, t->ival, t->dval, t->sval);
+        printf(" %d Return Code,    %s Actual Text,     %d Line Number,     %s Filename,    %d Integer Value,   %lf Double Value,   %s String\n", t->category, t->text, t->lineno, t->filename, t->ival, t->dval, t->sval);
         head = head->next;
     }
 }
@@ -105,19 +103,6 @@ void append_token(struct tokenList **head, struct tokenList **tail, struct token
     }
 }
 
-int determine_forbidden(char *text)
-{
-    for (int i = 0; i < (sizeof(forbidden_words) / sizeof(forbidden_words[0])); i++)
-    {
-        if (strcmp(text, forbidden_words[i]) == 0)
-        {
-            return FORBIDDEN;
-        }
-    }
-
-    return 0;
-}
-
 int main(int argc, char *argv[])
 {
     if (argc != 2)
@@ -139,58 +124,53 @@ int main(int argc, char *argv[])
     struct tokenList *tail = NULL;
 
     int return_code;
-    int forbidden_tester;
     int integer_value = 0;
     float double_value = 0;
     char *string_value = NULL;
     while ((return_code = yylex()) != 0)
     { // loops through each token until yylex returns 0, meaning EOF
-
-        forbidden_tester = determine_forbidden(yytext); // checks if yytext is in forbidden_keyword global array
-        if (forbidden_tester == 258)
-        { // forbidden is defined as 258
+        /* handles literal translation to their respective values */
+        switch (return_code)
+        {
+        case INT_LITERAL:
+            integer_value = strtol(yytext, NULL, 0); // change from string to integer
+            break;
+        case FLOAT_LITERAL:
+            double_value = strtof(yytext, NULL); // change from double to integer
+            break;
+        case STRING_LITERAL:
+            string_value = final_sval; // change string_value to accumulated sval from buffer
+            yytext = final_raw;
+            break;
+        case FORBIDDEN:
             fprintf(stderr, "Lexical error: illegal character '%s' at line %d from file %s\n", yytext, rows, argv[1]);
             exit(1);
+            break;
+        default:
+            break;
         }
-
-        else
+        /* malloc a token with all data needed */
+        struct token *tok = create_token(return_code, yytext, rows, argv[1], integer_value, double_value, string_value);
+        if (!tok)
         {
-            /* handles literal translation to their respective values */
-            switch (return_code)
-            {
-            case INT_LITERAL:
-                integer_value = strtol(yytext, NULL, 0); // change from string to integer
-                break;
-            case FLOAT_LITERAL:
-                double_value = strtof(yytext, NULL); // change from double to integer
-                break;
-            case STRING_LITERAL:
-                string_value = final_sval; // change string_value to accumulated sval from buffer
-                break;
-            default:
-                break;
-            }
-
-            /* malloc a token with all data needed */
-            struct token *tok = create_token(return_code, yytext, rows, argv[1], integer_value, double_value, string_value);
-            if (!tok)
-            {
-                fprintf(stderr, "Token allocation failed\n");
-                break;
-            }
-
-            append_token(&head, &tail, tok); // add token to linked list
-
-            /* reset these values for next token */
-            integer_value = 0;
-            double_value = 0;
-            string_value = NULL;
+            fprintf(stderr, "Token allocation failed\n");
+            break;
         }
+
+        append_token(&head, &tail, tok); // add token to linked list
+
+        /* reset these values for next token */
+        integer_value = 0;
+        double_value = 0;
+        string_value = NULL;
     }
 
     fclose(f); // close the input file
 
     print_tokens(head); // print tokens starting from head
+
+    final_sval = NULL; // cleanup sval
+    final_raw = NULL; // cleanup raw
     free_tokens(head);  // free tokens starting from head
 
     return 0;

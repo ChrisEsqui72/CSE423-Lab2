@@ -13,6 +13,12 @@
         char *final_sval = NULL;
         int str_len;
         int str_cap;
+        char *rawbuf = NULL;
+        char *final_raw = NULL;
+        int raw_len;
+        int raw_cap;
+        void append_raw(const char *text, int length);
+        void append_string(const char *text, int length);
 %}
 
 whitespace [ \t\r]+
@@ -121,29 +127,115 @@ shebang (#\!).*
 }
 
  /* MSTRING state to handle stripping/consuming of string and putting into sval */
-\"\"\"                  { BEGIN(MSTRING); start_row = rows; str_len = 0; str_cap = 64; strbuf = malloc(str_cap); if (strbuf==NULL){ fprintf(stderr, "malloc failed\n"); exit(1); } strbuf[0] = '\0'; }
-<MSTRING>\"\"\"         { BEGIN(INITIAL); final_sval = strbuf; strbuf = NULL; str_len = 0; str_cap = 64; return STRING_LITERAL; }
-<MSTRING>\\n            { append_string("\n", 1); }
-<MSTRING>\\t            { append_string("\t", 1); }
-<MSTRING>\\r            { append_string("\r", 1); }
-<MSTRING>\\\"           { append_string("\"", 1); }
-<MSTRING>\\\\           { append_string("\\", 1); }
-<MSTRING>[^\\\"]+       { append_string(yytext, yyleng); }
-<MSTRING>\\(.)          { fprintf(stderr, "Lexical error: MLL invalid escape sequence \\%c at row %d\n", yytext[1], rows); exit(1); }
-<MSTRING><<EOF>>        { fprintf(stderr, "Lexical error: MLL EOF unterminated string starting at row %d\n", start_row); exit(1); }
+\"\"\"                  { BEGIN(MSTRING); 
+                        start_row = rows; 
+                        str_len = 0; str_cap = 64; strbuf = malloc(str_cap); 
+                        if (strbuf==NULL){ fprintf(stderr, "malloc failed\n"); exit(1); } strbuf[0] = '\0'; 
+                        
+                        raw_len = 0; raw_cap = 64; rawbuf = malloc(raw_cap); 
+                        if (rawbuf==NULL){ fprintf(stderr, "malloc failed\n"); exit(1);} 
+                        rawbuf[0] = '\0'; append_raw("\"\"\"", 3); }
+<MSTRING>\"\"\"         { append_raw("\"\"\"", 3);
+                        BEGIN(INITIAL); 
+                        final_sval = strbuf; final_raw = rawbuf; 
+                        strbuf = NULL; str_len = 0; str_cap = 64;
+                        rawbuf = NULL; raw_len = 0; raw_cap = 64; 
+                        return STRING_LITERAL; }
+<MSTRING>\\n            { append_raw(yytext, yyleng); append_string("\n", 1); }
+<MSTRING>\\t            { append_raw(yytext, yyleng); append_string("\t", 1); }
+<MSTRING>\\r            { append_raw(yytext, yyleng); append_string("\r", 1); }
+<MSTRING>\\\"           { append_raw(yytext, yyleng); append_string("\"", 1); }
+<MSTRING>\\\\           { append_raw(yytext, yyleng); append_string("\\", 1); }
+<MSTRING>[^\\\"\n]+     { append_raw(yytext, yyleng); append_string(yytext, yyleng); }
+<MSTRING>\n             { append_raw(yytext, yyleng); append_string(yytext, yyleng); rows++; }
+<MSTRING>\\(.)          { fprintf(stderr, "Lexical error: MLL invalid escape sequence \\%c at row %d\n", yytext[1], rows); free(strbuf); free(rawbuf); exit(1); }
+<MSTRING><<EOF>>        { fprintf(stderr, "Lexical error: MLL EOF unterminated string starting at row %d\n", start_row); free(strbuf); free(rawbuf); exit(1); }
 
  /* STRING state to handle stripping/consuming of string and putting into sval */
-\"              { BEGIN(STRING); start_row = rows; str_len = 0; str_cap = 64; strbuf = malloc(str_cap); if (strbuf==NULL){ fprintf(stderr, "malloc failed\n"); exit(1); } strbuf[0] = '\0'; }
-<STRING>\"      { BEGIN(INITIAL); final_sval = strbuf; strbuf = NULL; str_len = 0; str_cap = 64; return STRING_LITERAL; }
-<STRING>\\n     { append_string("\n", 1); }
-<STRING>\\t     { append_string("\t", 1); }
-<STRING>\\r     { append_string("\r", 1); }
-<STRING>\\\"    { append_string("\"", 1); }
-<STRING>\\\\    { append_string("\\", 1); }
-<STRING>[^\\\"\n]+ { append_string(yytext, yyleng); }
-<STRING>\\(.)   { fprintf(stderr, "Lexical error: SLL invalid escape sequence \\%c at row %d\n", yytext[1], rows); exit(1); }
-<STRING>\n      { fprintf(stderr, "Lexical error: SLL unterminated string starting at row %d\n", start_row); exit(1); }
-<STRING><<EOF>> { fprintf(stderr, "Lexical error: EOF unterminated string starting at row %d\n", start_row); exit(1); }
+\"              { BEGIN(STRING); 
+                start_row = rows; 
+                str_len = 0; str_cap = 64; strbuf = malloc(str_cap);
+                if (strbuf==NULL){ fprintf(stderr, "malloc failed\n"); exit(1); } 
+                strbuf[0] = '\0'; 
+                
+                raw_len = 0; raw_cap = 64; rawbuf = malloc(raw_cap); 
+                if (rawbuf==NULL){ fprintf(stderr, "malloc failed\n"); exit(1);} 
+                rawbuf[0] = '\0'; append_raw("\"", 1); }
+<STRING>\"      { append_raw("\"", 1);
+                BEGIN(INITIAL); 
+                final_sval = strbuf; final_raw = rawbuf; 
+                strbuf = NULL; str_len = 0; str_cap = 64;
+                rawbuf = NULL; raw_len = 0; raw_cap = 64; 
+                return STRING_LITERAL; }
+<STRING>\\n     { append_raw(yytext, yyleng); append_string("\n", 1); }
+<STRING>\\t     { append_raw(yytext, yyleng); append_string("\t", 1); }
+<STRING>\\r     { append_raw(yytext, yyleng); append_string("\r", 1); }
+<STRING>\\\"    { append_raw(yytext, yyleng); append_string("\"", 1); }
+<STRING>\\\\    { append_raw(yytext, yyleng); append_string("\\", 1); }
+<STRING>[^\\\"\n]+ { append_raw(yytext, yyleng); append_string(yytext, yyleng); }
+<STRING>\\(.)   { fprintf(stderr, "Lexical error: SLL invalid escape sequence \\%c at row %d\n", yytext[1], rows); free(strbuf); free(rawbuf); exit(1); }
+<STRING>\n      { fprintf(stderr, "Lexical error: SLL unterminated string starting at row %d\n", start_row); free(strbuf); free(rawbuf); exit(1); }
+<STRING><<EOF>> { fprintf(stderr, "Lexical error: EOF unterminated string starting at row %d\n", start_row); free(strbuf); free(rawbuf); exit(1); }
+
+ /* Forbidden keywords (must be checked before ID rules) */
+"as?"          { return FORBIDDEN; }
+"as"           { return FORBIDDEN; }
+"!in"          { return FORBIDDEN; }
+"!is"          { return FORBIDDEN; }
+"is"           { return FORBIDDEN; }
+"abstract"     { return FORBIDDEN; }
+"actual"       { return FORBIDDEN; }
+"annotation"   { return FORBIDDEN; }
+"by"           { return FORBIDDEN; }
+"catch"        { return FORBIDDEN; }
+"class"        { return FORBIDDEN; }
+"companion"    { return FORBIDDEN; }
+"constructor"  { return FORBIDDEN; }
+"crossinline"  { return FORBIDDEN; }
+"data"         { return FORBIDDEN; }
+"delegate"     { return FORBIDDEN; }
+"dynamic"      { return FORBIDDEN; }
+"enum"         { return FORBIDDEN; }
+"except"       { return FORBIDDEN; }
+"external"     { return FORBIDDEN; }
+"field"        { return FORBIDDEN; }
+"file"         { return FORBIDDEN; }
+"final"        { return FORBIDDEN; }
+"finally"      { return FORBIDDEN; }
+"get"          { return FORBIDDEN; }
+"init"         { return FORBIDDEN; }
+"infix"        { return FORBIDDEN; }
+"inline"       { return FORBIDDEN; }
+"inner"        { return FORBIDDEN; }
+"internal"     { return FORBIDDEN; }
+"lateinit"     { return FORBIDDEN; }
+"noinline"     { return FORBIDDEN; }
+"object"       { return FORBIDDEN; }
+"open"         { return FORBIDDEN; }
+"operator"     { return FORBIDDEN; }
+"out"          { return FORBIDDEN; }
+"package"      { return FORBIDDEN; }
+"param"        { return FORBIDDEN; }
+"private"      { return FORBIDDEN; }
+"property"     { return FORBIDDEN; }
+"protected"    { return FORBIDDEN; }
+"public"       { return FORBIDDEN; }
+"reciever"     { return FORBIDDEN; }
+"reified"      { return FORBIDDEN; }
+"sealed"       { return FORBIDDEN; }
+"setparam"     { return FORBIDDEN; }
+"set"          { return FORBIDDEN; }
+"super"        { return FORBIDDEN; }
+"suspend"      { return FORBIDDEN; }
+"tailrec"      { return FORBIDDEN; }
+"this"         { return FORBIDDEN; }
+"throw"        { return FORBIDDEN; }
+"try"          { return FORBIDDEN; }
+"typealias"    { return FORBIDDEN; }
+"typeof"       { return FORBIDDEN; }
+"value"        { return FORBIDDEN; }
+"vararg"       { return FORBIDDEN; }
+"where"        { return FORBIDDEN; }
 
  /* identifiers */
 [a-zA-Z_][a-zA-Z0-9_]*  { words++; chars += strlen(yytext); return IDENTIFIER; } /* catch for identifiers (var names, fun names, etc. ) */
@@ -188,4 +280,20 @@ void append_string(const char *text, int length){
         memcpy(strbuf + str_len, text, length); /* copy text into the end of the buffer */
         str_len += length; /* update length */
         strbuf[str_len] = '\0'; /* keep it null terminated */
+}
+
+void append_raw(const char *text, int length){
+        if (length<= 0) /* empty append */
+                return;
+
+        if (raw_len + length + 1 >= raw_cap){ /*making sure the cap is large enough */
+                while(raw_len + length + 1 >= raw_cap)
+                        raw_cap *= 2; /* double until larger */
+                rawbuf = realloc(rawbuf, raw_cap);
+                if(!rawbuf)
+                        fprintf(stderr, "realloc failed on the raw buffer\n"); exit(1);
+        }
+        memcpy(rawbuf + raw_len, text, length); /* copy the text over to the buffer */
+        raw_len+=length; /* add the length needed to the buffer */
+        rawbuf[raw_len] = '\0'; /* null terminate the string */
 }
