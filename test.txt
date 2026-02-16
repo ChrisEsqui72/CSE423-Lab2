@@ -28,4 +28,3 @@ string"""
 "hello\ngoodsir!"
 "hello"
 "string"
-as?

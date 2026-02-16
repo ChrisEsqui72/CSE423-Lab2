@@ -146,6 +146,10 @@ int main(int argc, char *argv[])
             fprintf(stderr, "Lexical error: illegal character '%s' at line %d from file %s\n", yytext, rows, argv[1]);
             exit(1);
             break;
+        case NONIDENTIFIER:
+            fprintf(stderr, "Lexical error: Filename %s, line #%d, text: '%s', identifiers cannot begin with a number\n", argv[1], rows, yytext);
+            exit(1);
+            break;
         default:
             break;
         }

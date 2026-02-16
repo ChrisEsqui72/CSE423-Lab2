@@ -47,7 +47,7 @@ shebang (#\!).*
 "continue"      { return CONTINUE; }
 "do"            { return DO; }
 "else"          { return ELSE; }
-"false"         { return FALSE; }
+"false"         { return FALSE_; }
 "for"           { return FOR; }
 "fun"           { return FUN; }
 "if"            { return IF; }
@@ -133,7 +133,7 @@ shebang (#\!).*
                         if (strbuf==NULL){ fprintf(stderr, "malloc failed\n"); exit(1); } strbuf[0] = '\0'; 
                         
                         raw_len = 0; raw_cap = 64; rawbuf = malloc(raw_cap); 
-                        if (rawbuf==NULL){ fprintf(stderr, "malloc failed\n"); exit(1);} 
+                        if (rawbuf==NULL){ fprintf(stderr, "malloc failed\n"); exit(1);}  rawbuf[0] = '\0';
                         rawbuf[0] = '\0'; append_raw("\"\"\"", 3); }
 <MSTRING>\"\"\"         { append_raw("\"\"\"", 3);
                         BEGIN(INITIAL); 
@@ -238,7 +238,9 @@ shebang (#\!).*
 "where"        { return FORBIDDEN; }
 
  /* identifiers */
-[a-zA-Z_][a-zA-Z0-9_]*  { words++; chars += strlen(yytext); return IDENTIFIER; } /* catch for identifiers (var names, fun names, etc. ) */
+[a-zA-Z_][a-zA-Z0-9_]*  { return IDENTIFIER; } /* catch for identifiers (var names, fun names, etc. ) */
+[0-9]+[A-Za-z_][A-Za-z0-9_]*    { return NONIDENTIFIER; }
+
 
  /* all non-allowed keywords (hard, soft, modifier), operators, punctuation */
 . {

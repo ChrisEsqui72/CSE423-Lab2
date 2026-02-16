@@ -2,7 +2,7 @@
 #define CONTINUE 2
 #define DO 3
 #define ELSE 4
-#define FALSE 5
+#define FALSE_ 5
 #define FOR 6
 #define FUN 7
 #define IF 8
@@ -57,5 +57,4 @@
 #define STRING_LITERAL 104
 #define IDENTIFIER 257
 #define FORBIDDEN 258
-
-extern const char *forbidden_words[];
+#define NONIDENTIFIER 259

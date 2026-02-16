@@ -9,3 +9,4 @@ Done:
     - implemented single line string to sval with buffer
     - implemented multi line string to sval with buffer
     - implemented rawtext buffer for strings to be stored in yytext
+    - implemented test files. cover every integer code of MY ytab.h, not Jaxens
