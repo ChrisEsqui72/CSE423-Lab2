@@ -7,10 +7,17 @@ fun testOps(p: Int, q: Int?): Int {
 
     // safe call, elvis, and non-null assert
     val temp = b?.toString() ?: "default"
-    // val crash = b!!.toString()  // token test only
+    val crash = b!!.toString()  // token test only
 
     // boolean logic
     val logic = (a > 0) && (a < 100) || !(a == 50)
+
+    // ranges
+    val range_exl = (a > 0) ..< 100
+    val range_inc = (a < 0) .. -100
+
+    // type cast
+    val caster = (int)range
 
     // arithmetic
     a = a + 5

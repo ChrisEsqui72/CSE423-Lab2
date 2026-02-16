@@ -96,5 +96,8 @@ fun main() {
     val charLit = 'A'
     val stringLit = "compiler test"
 
+    // type
+    val string
+
     return
 }

@@ -98,6 +98,8 @@ shebang (#\!).*
 {basic_types}   { return TYPE; }
 "("             { return LPARA; }
 ")"             { return RPARA; }
+":"             { return COLON; }
+","             { return COMMA; }
 
  /* not implementing type casts yet as I literally have no idea how to deal with that */
 

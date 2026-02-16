@@ -21,7 +21,6 @@ for (i in x..y){
 0XF
 14512
 12.12314
-12abc
 """multiline
 line
 string"""
